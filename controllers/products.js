@@ -56,10 +56,22 @@ export const getProductById = async (req, res, next) => {
 
 // update product
 export const updateProduct = async (req, res) => {
-  res.send("product with id ${req.params.id} updated");
+  const updateProduct = await ProductModel.findByIdAndUpdate(
+    req.params.id,
+    req.body,
+
+    { new: true, runValidators: true }
+  );
+  res.json(`product with id ${req.params.id} updated`);
 };
 
 // delete product
 export const deleteProduct = async (req, res) => {
-  res.send("product with id ${req.params.id} deleted");
+  const deleteProduct = await ProductModel.findByIdAndDelete(req.params.id,
+    req.body,
+
+    { new: true, runValidators: true}
+  );
+
+  res.send(`product with id ${req.params.id} deleted`);
 };

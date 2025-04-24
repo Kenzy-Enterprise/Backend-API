@@ -7,7 +7,7 @@ export const registerValidator = Joi.object({
   phone: Joi.number().required(),
   password: Joi.string().min(8).max(20).required(),
   confirmPassword: Joi.ref("password"),
-  // phone: Joi.number().pattern(/^[0-9]{10,15}$/).required()
+  phone: Joi.string().pattern(/^[0-9]{10,15}$/).required(),
 }).with("password", "confirmPassword");
 
 // User login validator

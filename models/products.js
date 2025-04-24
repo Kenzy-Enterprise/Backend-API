@@ -8,10 +8,8 @@ const productSchema = new Schema(
     price: { type: Number, required: true, min: 0 },
     quantity: { type: Number, required: true, min: 0 },
     category: { type: String, required: true },
-    // image: {
-    //   type: String,
-    //   required: [true, "Product image URL is required"],
-    // },
+    image: { type: String, required: true },
+    
   },
   {
     timestamps: true,
