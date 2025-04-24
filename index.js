@@ -3,6 +3,7 @@ import productsRouter from "./routes/product_routes.js";
 import userRouter from "./routes/auth_routes.js";
 import mongoose from "mongoose";
 
+
 // connect to database
 await mongoose.connect(process.env.MONGO_URL).then(() => {
   console.log("Database is connected");
@@ -13,7 +14,7 @@ const app = express();
 
 app.use(express.json());
 
-// middleware
+// middlewares
 
 // use route
 app.use(userRouter);

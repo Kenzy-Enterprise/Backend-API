@@ -15,7 +15,7 @@ export const mailTransporter = createTransport({
 // 2. Email Templates
 export const registerUserMailTemplate = `
 <div>
-    <h1>Dear {username}</h1>
+    <h1>Dear Kande</h1>
     <p>You have successfully registered to our platform</p>
     <p>Thank you for choosing us</p>
 </div>

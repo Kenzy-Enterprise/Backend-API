@@ -6,6 +6,6 @@ export const addProductValidator = Joi.object({
     price: Joi.number().required(),
     quantity: Joi.number().required(),
     category: Joi.string().required(),
-    // image: Joi.string().required(), 
+    image: Joi.string().required(), 
 });
 

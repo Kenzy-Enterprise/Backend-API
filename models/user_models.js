@@ -37,43 +37,15 @@ const userSchema = new Schema(
         validator: (phone) => /^[0-9]{10,15}$/.test(phone),
         message: "Phone number must be 10-15 digits",
       },
+
+      role: {
+        type: String,
+        enum: ["user", "admin"],
+        default: "user",
+      },
     },
-  //   isVerified: {
-  //     type: Boolean,
-  //     default: false,
-  //   },
-  //   verificationOTP: {
-  //     type: String,
-  //   },
-  //   verificationOTPExpires: {
-  //     type: Date,
-  //   },
-  //   resetPasswordOTP: {
-  //     type: String,
-  //   },
-  //   resetPasswordOTPExpires: {
-  //     type: Date,
-  //   },
-  //   lastLogin: {
-  //     type: Date,
-  //   },
-  // },
-  // {
-  //   timestamps: true,
-  // }
 });
 
-// Password hashing middleware
-// userSchema.pre("save", async function (next) {
-//   if (!this.isModified("password")) return next();
-//   this.password = await bcrypt.hash(this.password, 12);
-//   next();
-// });
-
-// // Password comparison method
-// userSchema.methods.comparePassword = async function (candidatePassword) {
-//   return await bcrypt.compare(candidatePassword, this.password);
-// };
 
 userSchema.plugin(normalize);
 
