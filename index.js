@@ -12,12 +12,12 @@ await mongoose.connect(process.env.MONGO_URL).then(() => {
 // create express app
 const app = express();
 
-app.use(express.json());
-
 // middlewares
 
+app.use(express.json());
+
 // use route
-app.use(userRouter);
+app.use("/users", userRouter);
 app.use(productsRouter);
 
 // listen for incoming requests

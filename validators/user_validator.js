@@ -7,6 +7,7 @@ export const registerValidator = Joi.object({
   phone: Joi.number().required(),
   password: Joi.string().min(8).max(20).required(),
   confirmPassword: Joi.ref("password"),
+  role: Joi.string().valid("user", "admin").default("user"),
   phone: Joi.string().pattern(/^[0-9]{10,15}$/).required(),
 }).with("password", "confirmPassword");
 
@@ -15,6 +16,12 @@ export const loginValidator = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().required(),
 });
+
+// User update validator
+export  const updateValidator = Joi.object({
+  role: Joi.string().valid("user", "admin").required(),
+  
+})
 
 // Otp validator
 export const otpValidator = Joi.object({

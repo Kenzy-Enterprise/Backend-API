@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { registerUser } from "../controllers/user.js";
-import { login } from "../controllers/auth.js";
+import { loginUser, registerUser, upddateUserRole } from "../controllers/user.js";
+
 
 
 
@@ -8,7 +8,8 @@ import { login } from "../controllers/auth.js";
 const router = Router();  
 
 // Define routes for user registration and login
-router.post("/users/register", registerUser);
-router.post("/login", login); 
+router.post("/register", registerUser);
+router.post("/login", loginUser); 
+router.patch('/id', upddateUserRole);
 
 export default router;  
