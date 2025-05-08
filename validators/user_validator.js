@@ -31,7 +31,11 @@ export const otpValidator = Joi.object({
 // forget password validator
 
 // update password validator
-
+export const updatePasswordValidator = Joi.object({
+  oldPassword: Joi.string().required(),
+  newPassword: Joi.string().required(),
+  confirmPassword: Joi.ref("newPassword"),
+}).with("newPassword", "confirmPassword");
 // cloudinary
 
 // password reset validator
