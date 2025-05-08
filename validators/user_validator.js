@@ -4,11 +4,10 @@ import Joi from "joi";
 export const registerValidator = Joi.object({
   name: Joi.string().min(3).max(40).required(),
   email: Joi.string().email().required(),
-  phone: Joi.number().required(),
   password: Joi.string().min(8).max(20).required(),
   confirmPassword: Joi.ref("password"),
   role: Joi.string().valid("user", "admin").default("user"),
-  phone: Joi.string().pattern(/^[0-9]{10,15}$/).required(),
+  phone: Joi.string().pattern(/^[0-9]{10,15}$/).required() // Only one phone definition
 }).with("password", "confirmPassword");
 
 // User login validator
@@ -38,10 +37,18 @@ export const updatePasswordValidator = Joi.object({
 
 
 
-export const passwordResetValidator = Joi.object({
-  token: Joi.string().required(),
-  otp: Joi.string().email().required,
+
+export const forgotPasswordValidator = Joi.object({
+  email: Joi.string().email().required().messages({
+    'string.email': 'Please provide a valid email address',
+    'any.required': 'Email is required'
+  })
+});
+
+
+export const resetPasswordValidator = Joi.object({
+  email: Joi.string().email().required(),
+  otp: Joi.string().length(6).required(),
   newPassword: Joi.string().min(8).required(),
   confirmPassword: Joi.ref('newPassword')
 }).with('newPassword', 'confirmPassword');
-

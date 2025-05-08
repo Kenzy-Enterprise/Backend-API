@@ -23,8 +23,12 @@ const userSchema = new Schema({
     select: false
   },
   passwordChangedAt: Date,
-  resetPasswordToken: String,
-  resetPasswordExpire: Date,
+  otp: String,
+  otpExpire: Date,
+  otpAttempts: {
+    type: Number,
+    default: 0
+  },
   phone: {
     type: String,
     required: [true, "Phone number is required"],

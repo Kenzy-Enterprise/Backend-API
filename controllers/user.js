@@ -1,6 +1,8 @@
 
 import Joi from "joi";
 import bcrypt from "bcrypt";
+import crypto from "crypto";
+import { sendOTPEmail } from "../utils/mail.js";
 import jwt from "jsonwebtoken";
 import { UserModel } from "../models/user_models.js";
 import {
@@ -8,8 +10,10 @@ import {
   registerValidator,
   updatePasswordValidator,
   otpValidator,
-  passwordResetValidator,
+  resetPasswordValidator,
+  forgotPasswordValidator 
 } from "../validators/user_validator.js";
+
 
 // User Registration Controller
 export const registerUser = async (req, res, next) => {
@@ -194,3 +198,111 @@ export const updatePassword = async (req, res) => {
 };
 
 // Password Reset Controller
+export const resetPassword = async (req, res) => {
+  try {
+    const { error, value } = resetPasswordValidator.validate(req.body);
+    if (error) return res.status(422).json({ error: error.details });
+
+    const user = await UserModel.findOne({ email: value.email });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Generate reset token and expiration
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    // Save hashed token and expiration
+    user.resetToken = await bcrypt.hash(resetToken, 10);
+    user.resetExpires = resetExpire;
+    await user.save();
+
+    // Send reset link via email
+    await sendOTPEmail(user.email, resetToken);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Password reset link sent to registered email'
+    });
+  } catch (error) {
+    console.error('Password reset error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Send OTP for Password Reset
+export const sendPasswordResetOTP = async (req, res) => {
+  try {
+    const { error, value } = forgotPasswordValidator.validate(req.body);
+    if (error) return res.status(422).json({ error: error.details });
+
+    const user = await UserModel.findOne({ email: value.email });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Generate 6-digit OTP
+    const otp = crypto.randomInt(100000, 999999).toString();
+    const otpExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    // Save hashed OTP and expiration
+    user.otp = await bcrypt.hash(otp, 10);
+    user.otpExpire = otpExpire;
+    user.otpAttempts = 0;
+    await user.save();
+
+    // Send OTP via email
+    await sendOTPEmail(user.email, otp);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'OTP sent to registered email'
+    });
+  } catch (error) {
+    console.error('Send OTP error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Verify OTP and Reset Password
+export const resetPasswordWithOTP = async (req, res) => {
+  try {
+    const { error, value } = resetPasswordValidator.validate(req.body);
+    if (error) return res.status(422).json({ error: error.details });
+
+    const user = await UserModel.findOne({ email: value.email });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Check OTP attempts
+    if (user.otpAttempts >= 3) {
+      return res.status(429).json({ 
+        message: 'Too many attempts. Please request new OTP' 
+      });
+    }
+
+    // Check OTP expiration
+    if (Date.now() > user.otpExpire) {
+      return res.status(400).json({ message: 'OTP expired' });
+    }
+
+    // Verify OTP
+    const isValidOTP = await bcrypt.compare(value.otp, user.otp);
+    if (!isValidOTP) {
+      user.otpAttempts += 1;
+      await user.save();
+      return res.status(400).json({ message: 'Invalid OTP' });
+    }
+
+    // Reset password and clear OTP fields
+    user.password = await bcrypt.hash(value.newPassword, 12);
+    user.otp = undefined;
+    user.otpExpire = undefined;
+    user.otpAttempts = 0;
+    user.passwordChangedAt = Date.now() - 1000;
+    await user.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Password reset successfully'
+    });
+  } catch (error) {
+    console.error('Password reset error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
