@@ -34,5 +34,6 @@ userRouter.post("/verify-otp", verifyOTP);
 
 // Password management routes
 userRouter.patch("/update-password", protect, updatePassword);
+userRouter.patch("/reset-password", protect, updatePassword);
 
 export default userRouter;

@@ -28,7 +28,6 @@ export const otpValidator = Joi.object({
   email: Joi.string().email().required(),
   otp: Joi.string().length(6).required(),
 });
-// forget password validator
 
 // update password validator
 export const updatePasswordValidator = Joi.object({
@@ -36,11 +35,13 @@ export const updatePasswordValidator = Joi.object({
   newPassword: Joi.string().required(),
   confirmPassword: Joi.ref("newPassword"),
 }).with("newPassword", "confirmPassword");
-// cloudinary
 
-// password reset validator
+
+
 export const passwordResetValidator = Joi.object({
-  email: Joi.string().email().required(),
-  newPassword: Joi.string().min(8).max(30).required(),
-  otp: Joi.string().length(6).required(),
-});
+  token: Joi.string().required(),
+  otp: Joi.string().email().required,
+  newPassword: Joi.string().min(8).required(),
+  confirmPassword: Joi.ref('newPassword')
+}).with('newPassword', 'confirmPassword');
+

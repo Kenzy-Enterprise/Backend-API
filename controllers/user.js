@@ -34,33 +34,87 @@ export const registerUser = async (req, res, next) => {
   }
 };
 
+
 // User Login Controller
 export const loginUser = async (req, res) => {
   try {
+    // Validate request body
     const { error, value } = loginValidator.validate(req.body);
-    if (error) return res.status(422).json({ error: error.details });
-
-    const user = await UserModel.findOne({ email: value.email });
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    const isPasswordValid = await bcrypt.compare(value.password, user.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ message: "Invalid credentials" });
+    if (error) {
+      return res.status(422).json({
+        status: 'fail',
+        error: error.details.map(d => d.message)
+      });
     }
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
+    // Find user with password explicitly selected
+    const user = await UserModel.findOne({ email: value.email })
+      .select('+password');
+
+    if (!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: "User not found"
+      });
+    }
+
+    // Check if password exists (in case of social login users)
+    if (!user.password) {
+      return res.status(400).json({
+        status: 'fail',
+        message: "Password authentication not enabled for this user"
+      });
+    }
+
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(value.password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        status: 'fail',
+        message: "Invalid credentials"
+      });
+    }
+
+    // Verify JWT secret exists
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET missing in environment variables');
+      return res.status(500).json({
+        status: 'error',
+        message: "Server configuration error"
+      });
+    }
+
+    // Create JWT token
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    // Return response without sensitive data
+    res.status(200).json({
+      status: 'success',
+      data: {
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role
+        }
+      }
     });
 
-    res.status(200).json({
-      token,
-      user: { id: user._id, email: user.email },
-    });
   } catch (error) {
     console.error("Login error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({
+      status: 'error',
+      message: "Internal server error",
+      ...(process.env.NODE_ENV === 'development' && { error: error.message })
+    });
   }
 };
+
 
 // OTP Verification Controller
 export const verifyOTP = async (req, res) => {
