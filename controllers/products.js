@@ -36,64 +36,36 @@ export const addProducts = async (req, res, next) => {
   try {
     const { error, value } = addProductValidator.validate(req.body);
     if (error) {
-      return res.status(400).json({
-        status: 'fail',
-        error: error.details
-      });
+      return res.status(400).json({ status: 'fail', error: error.details });
     }
 
     if (!req.files?.length) {
-      return res.status(400).json({
-        status: 'fail',
-        message: 'Please upload at least one product image'
-      });
+      return res.status(400).json({ status: 'fail', message: 'Please upload at least one product image' });
     }
 
     const imageUploadPromises = req.files.map(async (file) => {
-      try {
-        const result = await cloudinary.uploader.upload(file.path, {
-          folder: 'products',
-          quality: 'auto',
-          fetch_format: 'auto'
-        });
-        return {
-          public_id: result.public_id,
-          url: result.secure_url
-        };
-      } catch (uploadError) {
-        throw new Error(`Failed to upload image: ${uploadError.message}`);
-      }
+      const result = await cloudinary.uploader.upload(
+        `data:${file.mimetype};base64,${file.buffer.toString('base64')}`,
+        { folder: 'products', quality: 'auto', fetch_format: 'auto' }
+      );
+      return { public_id: result.public_id, url: result.secure_url };
     });
 
     const images = await Promise.all(imageUploadPromises);
-
-    const productData = {
-      ...value,
-      images
-    };
-
+    const productData = { ...value, images };
     const newProduct = await ProductModel.create(productData);
 
-    res.status(201).json({
-      status: 'success',
-      data: {
-        product: newProduct
-      }
-    });
+    res.status(201).json({ status: 'success', data: { product: newProduct } });
 
   } catch (error) {
     if (req.files?.length) {
-      await Promise.all(req.files.map(file => 
-        cloudinary.uploader.destroy(file.public_id)
-      ));
+      await Promise.all(
+        req.files.map(file => 
+          file.public_id ? cloudinary.uploader.destroy(file.public_id) : Promise.resolve()
+        )
+      );
     }
-    
-    console.error('Product creation error:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Internal server error',
-      ...(process.env.NODE_ENV === 'development' && { error: error.message })
-    });
+    next(error);
   }
 };
 
