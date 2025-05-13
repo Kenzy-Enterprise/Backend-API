@@ -1,224 +1,191 @@
 import { ProductModel } from "../models/products.js";
 import { addProductValidator } from "../validators/product_validators.js";
-// import { upload } from "../middlewares/upload.js";
-// import cloudinary from "../config/cloudinary.js";
 import { v2 as cloudinary } from "cloudinary";
 
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
-export const addProducts = async (req, res, next) => {
-  try {
-    console.log(req.file, req.files);
-    // upload product image
-
-    // validate product data
-    const { error, value } = addProductValidator.validate(req.body);
-
-    if (error) {
-      return res.status(400).json(error);
-    }
-    const product = new ProductModel(req.body);
-
-    const newProduct = await product.save();
-    res.status(200).json({
-      product: newProduct,
-    });
-
-    // save product to database
-    const result = await ProductModel.create(value);
-    // return response
-    res.status(201).json(result);
-  } catch (error) {
-    next(error);
-  }
-};
-// get all products
+// Get all products
 export const getProducts = async (req, res, next) => {
   try {
-    const { filter = "{}", sort = "{}" } = req.query;
-    // fetch products from database
-    const result = await ProductModel.find(JSON.parse(filter)).sort(
-      JSON.parse(sort)
-    );
-    // return response
-    res.json(result);
+    const products = await ProductModel.find();
+    
+    res.status(200).json({
+      status: 'success',
+      results: products.length,
+      data: {
+        products
+      }
+    });
   } catch (error) {
-    next(error);
+    console.error('Get products error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Internal server error',
+      ...(process.env.NODE_ENV === 'development' && { error: error.message })
+    });
   }
 };
 
+// Add new product
+export const addProducts = async (req, res, next) => {
+  try {
+    const { error, value } = addProductValidator.validate(req.body);
+    if (error) {
+      return res.status(400).json({
+        status: 'fail',
+        error: error.details
+      });
+    }
+
+    if (!req.files?.length) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Please upload at least one product image'
+      });
+    }
+
+    const imageUploadPromises = req.files.map(async (file) => {
+      try {
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: 'products',
+          quality: 'auto',
+          fetch_format: 'auto'
+        });
+        return {
+          public_id: result.public_id,
+          url: result.secure_url
+        };
+      } catch (uploadError) {
+        throw new Error(`Failed to upload image: ${uploadError.message}`);
+      }
+    });
+
+    const images = await Promise.all(imageUploadPromises);
+
+    const productData = {
+      ...value,
+      images
+    };
+
+    const newProduct = await ProductModel.create(productData);
+
+    res.status(201).json({
+      status: 'success',
+      data: {
+        product: newProduct
+      }
+    });
+
+  } catch (error) {
+    if (req.files?.length) {
+      await Promise.all(req.files.map(file => 
+        cloudinary.uploader.destroy(file.public_id)
+      ));
+    }
+    
+    console.error('Product creation error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Internal server error',
+      ...(process.env.NODE_ENV === 'development' && { error: error.message })
+    });
+  }
+};
+
+// Get single product by ID
 export const getProductById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    // fetch product from database
-    const result = await ProductModel.findById(id);
-    // return response
-    res.json(result);
+    const product = await ProductModel.findById(id);
+    
+    if (!product) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Product not found'
+      });
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        product
+      }
+    });
   } catch (error) {
-    next(error);
+    console.error('Get product error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Internal server error',
+      ...(process.env.NODE_ENV === 'development' && { error: error.message })
+    });
   }
 };
 
-// update product
+// Update product
 export const updateProduct = async (req, res) => {
-  const updateProduct = await ProductModel.findByIdAndUpdate(
-    req.params.id,
-    req.body,
+  try {
+    const product = await ProductModel.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
 
-    { new: true, runValidators: true }
-  );
-  res.json(`product with id ${req.params.id} updated`);
+    if (!product) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Product not found'
+      });
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        product
+      }
+    });
+  } catch (error) {
+    console.error('Update product error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Internal server error',
+      ...(process.env.NODE_ENV === 'development' && { error: error.message })
+    });
+  }
 };
 
-// delete product
+// Delete product
 export const deleteProduct = async (req, res) => {
-  const deleteProduct = await ProductModel.findByIdAndDelete(req.params.id,
-    req.body,
+  try {
+    const product = await ProductModel.findByIdAndDelete(req.params.id);
 
-    { new: true, runValidators: true}
-  );
+    if (!product) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Product not found'
+      });
+    }
 
-  res.send(`product with id ${req.params.id} deleted`);
+    const deletePromises = product.images.map(async (image) => {
+      await cloudinary.uploader.destroy(image.public_id);
+    });
+
+    await Promise.all(deletePromises);
+
+    res.status(204).json({
+      status: 'success',
+      data: null
+    });
+  } catch (error) {
+    console.error('Delete product error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Internal server error',
+      ...(process.env.NODE_ENV === 'development' && { error: error.message })
+    });
+  }
 };
-// import { ProductModel } from "../models/products.js";
-// import { addProductValidator } from "../validators/product_validators.js";
-// import cloudinary from "../config/cloudinary.js";
-
-// export const addProducts = async (req, res, next) => {
-//   try {
-//     // Validate request data
-//     const { error, value } = addProductValidator.validate(req.body);
-//     if (error) return res.status(400).json({ error: error.details });
-
-//     // Check for uploaded files
-//     if (!req.files?.length) {
-//       return res.status(400).json({ error: "No images uploaded" });
-//     }
-
-//     // Upload images to Cloudinary
-//     const imageUploads = req.files.map(async (file) => {
-//       try {
-//         const result = await cloudinary.uploader.upload(file.path, {
-//           folder: "products",
-//           quality: "auto",
-//           fetch_format: "auto"
-//         });
-//         return {
-//           public_id: result.public_id,
-//           url: result.secure_url
-//         };
-//       } catch (uploadError) {
-//         throw new Error(`Failed to upload image: ${uploadError.message}`);
-//       }
-//     });
-
-//     // Wait for all image uploads
-//     const images = await Promise.all(imageUploads);
-
-//     // Create product with image data
-//     const productData = {
-//       ...value,
-//       images
-//     };
-
-//     const newProduct = await ProductModel.create(productData);
-
-//     res.status(201).json({
-//       status: "success",
-//       data: {
-//         product: newProduct
-//       }
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
-
-// export const getProducts = async (req, res, next) => {
-//   try {
-//     const { filter = "{}", sort = "{}" } = req.query;
-//     const products = await ProductModel.find(JSON.parse(filter))
-//       .sort(JSON.parse(sort))
-//       .select("-__v");
-
-//     res.status(200).json({
-//       status: "success",
-//       results: products.length,
-//       data: { products }
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
-
-// export const getProductById = async (req, res, next) => {
-//   try {
-//     const product = await ProductModel.findById(req.params.id)
-//       .select("-__v");
-
-//     if (!product) {
-//       return res.status(404).json({
-//         status: "fail",
-//         message: "Product not found"
-//       });
-//     }
-
-//     res.status(200).json({
-//       status: "success",
-//       data: { product }
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
-
-// export const updateProduct = async (req, res, next) => {
-//   try {
-//     const updatedProduct = await ProductModel.findByIdAndUpdate(
-//       req.params.id,
-//       req.body,
-//       { new: true, runValidators: true }
-//     ).select("-__v");
-
-//     if (!updatedProduct) {
-//       return res.status(404).json({
-//         status: "fail",
-//         message: "Product not found"
-//       });
-//     }
-
-//     res.status(200).json({
-//       status: "success",
-//       data: { product: updatedProduct }
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
-
-// export const deleteProduct = async (req, res, next) => {
-//   try {
-//     const product = await ProductModel.findById(req.params.id);
-
-//     if (!product) {
-//       return res.status(404).json({
-//         status: "fail",
-//         message: "Product not found"
-//       });
-//     }
-
-//     // Delete images from Cloudinary
-//     const deletePromises = product.images.map(async (image) => {
-//       await cloudinary.uploader.destroy(image.public_id);
-//     });
-
-//     await Promise.all(deletePromises);
-//     await ProductModel.findByIdAndDelete(req.params.id);
-
-//     res.status(204).json({
-//       status: "success",
-//       data: null
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// };

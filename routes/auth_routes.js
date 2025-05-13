@@ -1,25 +1,9 @@
-// import { Router } from "express";
-// import { loginUser, registerUser, resetPassword, updatePassword, } from "../controllers/user.js";
-// import { protect } from "../middlewares/auth.js";
-
-
-
-
-
-// const userRouter = Router();  
-
-// // Define routes for user registration and login
-// userRouter.post("/register", registerUser);
-// userRouter.post("/login", loginUser); 
-// // router.patch('/:id', upddateUserRole);
-// userRouter.patch("/update-password", protect, updatePassword);
-// userRouter.post("/reset-password", resetPassword);
-
-// export default userRouter;  
 import { Router } from "express";
 import {
   loginUser,
   registerUser,
+  resetPasswordWithOTP,
+  sendPasswordResetOTP,
   updatePassword,
   verifyOTP
 } from "../controllers/user.js";
@@ -34,5 +18,7 @@ userRouter.post("/verify-otp", verifyOTP);
 
 // Password management routes
 userRouter.patch("/update-password", protect, updatePassword);
+userRouter.post("/forgot-password", sendPasswordResetOTP);
+userRouter.post("/reset-password", resetPasswordWithOTP);
 
 export default userRouter;

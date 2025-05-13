@@ -1,55 +1,26 @@
-import { createTransport } from 'nodemailer';
+import nodemailer from 'nodemailer';
 
-// 1. Email Transport Configuration
-export const mailTransporter = createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false,
-    service: "gmail",
-    auth: {
-        user: 'kenmalya2@gmail.com',
-        pass: 'sczt fiyv ojxm xobi',
-    },
+export const transporter = nodemailer.createTransport({
+  service: process.env.EMAIL_SERVICE,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD
+  }
 });
 
-// 2. Email Templates
-export const registerUserMailTemplate = `
-<div>
-    <h1>Dear Kande</h1>
-    <p>You have successfully registered to our platform</p>
-    <p>Thank you for choosing us</p>
-</div>
-`;
+export const sendOTPEmail = async (email, otp) => {
+  const mailOptions = {
+    from: process.env.EMAIL_FROM,
+    to: email,
+    subject: 'Password Reset OTP',
+    html: `
+      <h2>Password Reset Request</h2>
+      <p>Your OTP for password reset is:</p>
+      <h3>${otp}</h3>
+      <p>This OTP is valid for 10 minutes.</p>
+      <p>If you didn't request this, please ignore this email.</p>
+    `
+  };
 
-export const otpMailTemplate = `
-<div>
-    <h1>Dear {username}</h1>
-    <p>Your verification code is: <strong>{otp}</strong></p>
-    <p>This code expires in 5 minutes</p>
-</div>
-`;
-
-// 3. Email Sending Functions
-export const sendRegistrationEmail = async (email, username) => {
-    const html = registerUserMailTemplate.replace('{username}', username);
-    
-    await mailTransporter.sendMail({
-        from: '"Your App Name" <kenmalya2@gmail.com>',
-        to: email,
-        subject: 'Registration Successful',
-        html: html
-    });
-};
-
-export const sendOTPEmail = async (email, username, otp) => {
-    const html = otpMailTemplate
-        .replace('{username}', username)
-        .replace('{otp}', otp);
-
-    await mailTransporter.sendMail({
-        from: '"Kenzy Royal Enterprise" <kenmalya2@gmail.com>',
-        to: email,
-        subject: 'Your Verification Code',
-        html: html
-    });
+  await transporter.sendMail(mailOptions);
 };
