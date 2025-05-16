@@ -7,7 +7,6 @@ import jwt from "jsonwebtoken";
 import { UserModel } from "../models/user_models.js";
 import {
   loginValidator,
-  registerValidator,
   updatePasswordValidator,
   otpValidator,
   resetPasswordValidator,
@@ -16,27 +15,27 @@ import {
 
 
 // User Registration Controller
-export const registerUser = async (req, res, next) => {
-  try {
-    const { error, value } = registerValidator.validate(req.body);
-    if (error) return res.status(422).json({ error: error.details });
+// export const registerUser = async (req, res, next) => {
+//   try {
+//     const { error, value } = registerValidator.validate(req.body);
+//     if (error) return res.status(422).json({ error: error.details });
 
-    const existingUser = await UserModel.findOne({
-      $or: [{ name: value.name }, { email: value.email }],
-    });
+//     const existingUser = await UserModel.findOne({
+//       $or: [{ name: value.name }, { email: value.email }],
+//     });
 
-    if (existingUser) {
-      return res.status(409).json({ message: "User already exists!" });
-    }
+//     if (existingUser) {
+//       return res.status(409).json({ message: "User already exists!" });
+//     }
 
-    const hashedPassword = await bcrypt.hash(value.password, 10);
-    await UserModel.create({ ...value, password: hashedPassword });
+//     const hashedPassword = await bcrypt.hash(value.password, 10);
+//     await UserModel.create({ ...value, password: hashedPassword });
 
-    res.status(201).json({ message: "User successfully registered!" });
-  } catch (error) {
-    next(error);
-  }
-};
+//     res.status(201).json({ message: "User successfully registered!" });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
 
 
 // User Login Controller

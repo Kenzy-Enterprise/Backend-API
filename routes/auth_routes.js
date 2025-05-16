@@ -1,7 +1,6 @@
 import { Router } from "express";
 import {
   loginUser,
-  registerUser,
   resetPasswordWithOTP,
   sendPasswordResetOTP,
   updatePassword,
@@ -12,7 +11,7 @@ import { protect } from "../middlewares/auth.js";
 const userRouter = Router();
 
 // Authentication routes
-userRouter.post("/register", registerUser);
+//
 userRouter.post("/login", loginUser);
 userRouter.post("/verify-otp", verifyOTP);
 
