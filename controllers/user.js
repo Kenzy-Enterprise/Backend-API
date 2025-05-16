@@ -7,7 +7,6 @@ import jwt from "jsonwebtoken";
 import { UserModel } from "../models/user_models.js";
 import {
   loginValidator,
-  registerValidator,
   updatePasswordValidator,
   otpValidator,
   resetPasswordValidator,
